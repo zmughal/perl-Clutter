@@ -1,0 +1,6 @@
+{{$NEXT}}
+
+Overview of changes in Clutter 1.110 [2012-05-03]
+=================================================
+
+ * Initial alpha release of the new introspection-based Clutter Perl bindings
