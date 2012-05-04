@@ -14,121 +14,121 @@ my $_CLUTTER_VERSION = '1.0';
 my $_CLUTTER_PACKAGE = 'Clutter';
 
 sub import {
-  my $class = shift;
+    my $class = shift;
 
-  Glib::Object::Introspection->setup (
-    basename => $_CLUTTER_BASENAME,
-    version => $_CLUTTER_VERSION,
-    package => $_CLUTTER_PACKAGE,
-  );
+    Glib::Object::Introspection->setup (
+        basename => $_CLUTTER_BASENAME,
+        version => $_CLUTTER_VERSION,
+        package => $_CLUTTER_PACKAGE,
+    );
 }
 
 # - Overrides --------------------------------------------------------------- #
 
 sub Clutter::CHECK_VERSION {
-  return not defined Clutter::check_version(@_ == 4 ? @_[1..3] : @_);
+    return not defined Clutter::check_version(@_ == 4 ? @_[1..3] : @_);
 }
 
 sub Clutter::check_version {
-  Glib::Object::Introspection->invoke ($_CLUTTER_BASENAME, undef, 'check_version',
-                                       @_ == 4 ? @_[1..3] : @_);
+    Glib::Object::Introspection->invoke(
+        $_CLUTTER_BASENAME, undef, 'check_version',
+        @_ == 4 ? @_[1..3] : @_,
+    );
 }
 
 sub Clutter::init {
-  my $rest = Glib::Object::Introspection->invoke (
-               $_CLUTTER_BASENAME, undef, 'init',
-               [$0, @ARGV]);
-  @ARGV = @{$rest}[1 .. $#$rest]; # remove $0
-  return;
+    my $rest = Glib::Object::Introspection->invoke(
+        $_CLUTTER_BASENAME, undef, 'init',
+        [$0, @ARGV],
+    );
+    @ARGV = @{$rest}[1 .. $#$rest]; # remove $0
+    return;
 }
 
 sub Clutter::main {
-  # Ignore any arguments passed in.
-  Glib::Object::Introspection->invoke ($_CLUTTER_BASENAME, undef, 'main');
+    # Ignore any arguments passed in.
+    Glib::Object::Introspection->invoke($_CLUTTER_BASENAME, undef, 'main');
 }
 
 sub Clutter::main_quit {
-  # Ignore any arguments passed in.
-  Glib::Object::Introspection->invoke ($_CLUTTER_BASENAME, undef, 'main_quit');
+    # Ignore any arguments passed in.
+    Glib::Object::Introspection->invoke($_CLUTTER_BASENAME, undef, 'main_quit');
 }
 
-sub Gtk3::Builder::add_from_string {
-  my ($builder, $string) = @_;
-  return Glib::Object::Introspection->invoke (
-    $_CLUTTER_BASENAME, 'Script', 'add_from_string',
-    $builder, $string, length $string);
+sub Clutter::Script::load_from_data {
+    my ($builder, $string) = @_;
+    return Glib::Object::Introspection->invoke(
+        $_CLUTTER_BASENAME, 'Script', 'load_from_data',
+        $builder, $string, length $string
+    );
 }
 
 # Copied from Gtk2.pm
 sub Clutter::Script::connect_signals {
-  my $builder = shift;
-  my $user_data = shift;
+    my $builder = shift;
+    my $user_data = shift;
 
-  my $do_connect = sub {
-    my ($object,
-        $signal_name,
-        $user_data,
-        $connect_object,
-        $flags,
-        $handler) = @_;
-    my $func = ($flags & 'after') ? 'signal_connect_after' : 'signal_connect';
-    # we get connect_object when we're supposed to call
-    # signal_connect_object, which ensures that the data (an object)
-    # lives as long as the signal is connected.  the bindings take
-    # care of that for us in all cases, so we only have signal_connect.
-    # if we get a connect_object, just use that instead of user_data.
-    $object->$func($signal_name => $handler,
-                   $connect_object ? $connect_object : $user_data);
-  };
+    my $do_connect = sub {
+        my ($object,
+            $signal_name,
+            $user_data,
+            $connect_object,
+            $flags,
+            $handler) = @_;
+        my $func = ($flags & 'after') ? 'signal_connect_after' : 'signal_connect';
+        # we get connect_object when we're supposed to call
+        # signal_connect_object, which ensures that the data (an object)
+        # lives as long as the signal is connected.  the bindings take
+        # care of that for us in all cases, so we only have signal_connect.
+        # if we get a connect_object, just use that instead of user_data.
+        $object->$func($signal_name => $handler, $connect_object ? $connect_object : $user_data);
+    };
 
-  # $builder->connect_signals ($user_data)
-  # $builder->connect_signals ($user_data, $package)
-  if ($#_ <= 0) {
-    my $package = shift;
-    $package = caller unless defined $package;
+    # $builder->connect_signals ($user_data)
+    # $builder->connect_signals ($user_data, $package)
+    if ($#_ <= 0) {
+        my $package = shift;
+        $package = caller unless defined $package;
 
-    $builder->connect_signals_full(sub {
-      my ($builder,
-          $object,
-          $signal_name,
-          $handler_name,
-          $connect_object,
-          $flags) = @_;
+        $builder->connect_signals_full(sub {
+            my ($builder,
+                $object,
+                $signal_name,
+                $handler_name,
+                $connect_object,
+                $flags) = @_;
 
-      no strict qw/refs/;
+            no strict qw/refs/;
 
-      my $handler = $handler_name;
-      if (ref $package) {
-        $handler = sub { $package->$handler_name(@_) };
-      } else {
-        if ($package && $handler !~ /::/) {
-          $handler = $package.'::'.$handler_name;
-        }
-      }
+            my $handler = $handler_name;
+            if (ref $package) {
+                $handler = sub { $package->$handler_name(@_) };
+            } else {
+                if ($package && $handler !~ /::/) {
+                    $handler = $package.'::'.$handler_name;
+                }
+            }
 
-      $do_connect->($object, $signal_name, $user_data, $connect_object,
-                    $flags, $handler);
-    });
-  }
+            $do_connect->($object, $signal_name, $user_data, $connect_object, $flags, $handler);
+        });
+    }
+    # $builder->connect_signals ($user_data, %handlers)
+    else {
+        my %handlers = @_;
 
-  # $builder->connect_signals ($user_data, %handlers)
-  else {
-    my %handlers = @_;
+        $builder->connect_signals_full(sub {
+            my ($builder,
+                $object,
+                $signal_name,
+                $handler_name,
+                $connect_object,
+                $flags) = @_;
 
-    $builder->connect_signals_full(sub {
-      my ($builder,
-          $object,
-          $signal_name,
-          $handler_name,
-          $connect_object,
-          $flags) = @_;
+            return unless exists $handlers{$handler_name};
 
-      return unless exists $handlers{$handler_name};
-
-      $do_connect->($object, $signal_name, $user_data, $connect_object,
-                    $flags, $handlers{$handler_name});
-    });
-  }
+            $do_connect->($object, $signal_name, $user_data, $connect_object, $flags, $handlers{$handler_name});
+        });
+    }
 }
 
 1;
