@@ -37,12 +37,12 @@ sub Clutter::check_version {
 }
 
 sub Clutter::init {
-    my $rest = Glib::Object::Introspection->invoke(
+    my ($error, $rest) = Glib::Object::Introspection->invoke(
         $_CLUTTER_BASENAME, undef, 'init',
         [$0, @ARGV],
     );
     @ARGV = @{$rest}[1 .. $#$rest]; # remove $0
-    return;
+    return $error;
 }
 
 sub Clutter::main {
